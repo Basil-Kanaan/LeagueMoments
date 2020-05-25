@@ -1,0 +1,6 @@
+[HOTKEYS]
+timestamp = CTRL+S
+
+[GENERAL]
+league_path = C:\Riot Games\League of Legends
+

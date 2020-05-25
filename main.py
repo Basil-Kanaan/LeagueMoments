@@ -1,6 +1,7 @@
-from tkinter import Tk, Button, Frame, Scrollbar, Listbox, Text, LabelFrame, Toplevel
+from tkinter import Tk, Button, Frame, Scrollbar, Listbox, Text, LabelFrame, Toplevel, Entry, Label
 from tkinter.filedialog import askdirectory
 from game_checker import GameChecker
+from game_card import GameCard
 from hotkey_card import HotkeyCard
 from configparser import ConfigParser
 from datetime import datetime
@@ -24,22 +25,31 @@ class App:
 
     config: ConfigParser
 
+    allies: list
+    enemies: list
     times: list
 
     def __init__(self):
-        self.league_directory = "C:\Riot Games\League of Legends"
         self.master = Tk()
         master = self.master
 
         master.geometry("500x400")
         master.title("League Moments")
 
-        self._init_sidebar(master)
-        self._init_mainframe(master)
-
-        keyboard.add_hotkey('CTRL+S', self.save_time, args=())
+        self.games_config = ConfigParser()
+        if not os.path.exists("games.txt"):
+            open("games.txt", "x").close()
+        self.games_config.read("games.txt")
 
         self.config = ConfigParser()
+        if not os.path.exists("config.txt"):
+            open("config.txt", "x").close()
+        self.config.read("config.txt")
+
+        self.league_directory = self.config["GENERAL"]["league_path"]
+
+        self._init_sidebar(master)
+        self._init_mainframe(master)
 
     def _init_mainframe(self, parent):
         self.mainframe = Frame(parent)
@@ -52,6 +62,14 @@ class App:
 
         self.gamecards.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar.config(command=self.gamecards.yview)
+
+        for game in self.games_config["GAMES"]:
+            allies, enemies, times = self.games_config["GAMES"][game].split("|")
+            allies = allies.split(", ")
+            enemies = enemies.split(", ")
+            times = times.split(", ")
+            self.add_gamecard(self, allies, enemies, times)
 
     def _init_sidebar(self, parent):
         self.sidebar = Frame(parent, relief=tk.RAISED, bd=2, bg="gray")
@@ -69,6 +87,10 @@ class App:
 
         timestamp.config(command=self.hotkey_panel)
         directory.config(command=self.set_league_path)
+
+        self.league_path_view = Entry(sidebar)
+        self.league_path_view.pack(side="top", fill="x", padx=10, pady=5)
+        self.league_path_view.insert(0, self.league_directory)
 
         # Entry(sidebar, text="Test", state="disabled").pack(padx=10)
 
@@ -94,13 +116,19 @@ class App:
         header_frame = Frame(new_window)
         header_frame.pack(side="top", fill="x", padx=10, pady=(10, 0))
 
-        HotkeyCard(self, new_window, "Timestamp", "CTRL+S")
+        timestamp_hotkey = self.config["HOTKEYS"]["Timestamp"]
+        keyboard.add_hotkey(timestamp_hotkey, self.save_time, args=())
+        HotkeyCard(self, new_window, "Timestamp", timestamp_hotkey)
 
     def set_league_path(self):
         base_path = os.getcwd().split(os.sep)[0]
         path = askdirectory(mustexist=True, initialdir=base_path, title="Please select your League of Legends folder")
         path = os.sep.join(path.split("/"))
         self.league_directory = path
+        self.update_config("GENERAL", "league_path", path, "config.txt")
+
+        self.league_path_view.delete(0, "end")
+        self.league_path_view.insert(0, path)
 
     def save_time(self):
         if globals.in_game:
@@ -116,19 +144,38 @@ class App:
             seconds = time % 60
             times.append(f"{minutes}:{seconds}")
 
-        self.config.read('games.txt')
-        self.config["GAME 1"] = times
+        self.add_gamecard(self, self.allies, self.enemies, times)
 
-        with open('games.txt', 'w') as gamefile:
-            self.config.write(gamefile)
+        allies = str(self.allies).lstrip("[,").rstrip(",]")
+        enemies = str(self.enemies).lstrip("[,").rstrip(",]")
+        times = str(times).lstrip("[,").rstrip(",]")
+        info = (allies + "|" + enemies + "|" + times).replace("'", "")
+
+        if "GAMES" not in self.games_config.sections():
+            self.games_config["GAMES"] = {}
+
+        games = [int(i.split(" ")[1]) for i in self.games_config["GAMES"].keys()]
+        games.sort()
+
+        curr_game = games[-1] + 1 if games else 0
+        self.update_config("GAMES", f"Game {curr_game}", info, "games.txt")
+
+    def update_config(self, section, key, value, file):
+        if file == "games.txt":
+            config = self.games_config
+        else:
+            config = self.config
+
+        config[section][key] = value
+
+        with open(file, 'w') as config_file:
+            config.write(config_file)
+
+    def add_gamecard(self, app, allies, enemies, times):
+        GameCard(self.gamecards, app, allies, enemies, times)
 
     def mainloop(self):
         self.master.mainloop()
-
-
-class GameCard:
-    def __init__(self):
-        pass
 
 
 if __name__ == "__main__":
@@ -137,3 +184,4 @@ if __name__ == "__main__":
     GameChecker(app).start()
 
     app.mainloop()
+    globals.app_closed = True

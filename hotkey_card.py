@@ -33,7 +33,11 @@ class HotkeyCard(Frame):
         self.pack(side="top", fill="x", padx=10, pady=(10, 0))
 
     def delete_hotkey(self):
+        keyboard.remove_hotkey(self.hotkey_string)
         self.hotkey_label.config(text="")
+        self.hotkey_string = ""
+        label = self.action["text"][:-1]
+        self.app.update_config("HOTKEYS", label, self.hotkey_string, "config.txt")
 
     def set_hotkey(self):
         self.hotkey_label.config(text="Press Combination...")
@@ -45,3 +49,6 @@ class HotkeyCard(Frame):
         keyboard.add_hotkey(rec, self.app.save_time)
         self.hotkey_label.config(text=rec)
         self.hotkey_string = rec
+
+        label = self.action["text"][:-1]
+        self.app.update_config("HOTKEYS", label, self.hotkey_string, "config.txt")

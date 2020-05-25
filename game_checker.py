@@ -16,7 +16,6 @@ class GameChecker(Thread):
         sep = os.sep
 
         while not globals.app_closed:
-
             league_path = self.app.league_directory
             logs_path = league_path + sep + "Logs" + sep + "GameLogs"
 
@@ -24,37 +23,75 @@ class GameChecker(Thread):
                 timestamp = os.path.getmtime(logs_path)
                 latest_modified = datetime.fromtimestamp(timestamp).minute
 
-                if latest_modified == datetime.now().minute:
-                    self._loading_screen_start(logs_path)
+                if latest_modified == datetime.now().minute or globals.debug_mode:
+                    self._loading_screen_start(logs_path, globals.debug_mode)
 
             sleep(1)
 
-    def _loading_screen_start(self, logs_path):
+    def _loading_screen_start(self, logs_path, debug=False):
+
+        def tail(file):
+            file.seek(0, 2)
+            while True:
+                line = file.readline()
+                if line.strip():
+                    yield line
+                sleep(0.1)
+
         game_log_path = logs_path + os.sep + os.listdir(logs_path)[-1]
 
-        game_file: TextIO
-        for filename in os.listdir(game_log_path):
-            if "r3dlog.txt" in filename:
-                game_path = game_log_path + os.sep + filename
-                game_file = open(game_path)
+        if debug:
+            print("Game not started")
+            sleep(5)
+            print("Starting Timer")
+            self.app.times = [datetime.now()]
+            globals.in_game = True
 
-        for line in self._tail(game_file):
-            if "GAMESTATE_PREGAME to GAMESTATE_SPAWN" in line:
-                self.app.times = [datetime.now()]
-                globals.in_game = True
+            sleep(10)
+            print("Game ended")
+            globals.in_game = False
+            self.app.shelve_times()
+        else:
+            game_file: TextIO
+            for filename in os.listdir(game_log_path):
+                if "r3dlog.txt" in filename:
+                    game_path = game_log_path + os.sep + filename
+                    game_file = open(game_path)
 
-        for line in self._tail(game_file):
-            if "GAMESTATE_PRE_EXIT to GAMESTATE_EXIT" in line:
-                globals.in_game = False
-                self.app.s
-                break
+            TeamOrder, TeamChaos = [], []
+            TeamOrderIsAllies = False
+            for line in tail(game_file):
+                if "TeamOrder" in line:
+                    line = line.split("Champion(")[1].split(")")[0]
+                    TeamOrder.append(line)
+                    if "**LOCAL**" in line:
+                        TeamOrderIsAllies = True
 
-        game_file.close()
+                elif "TeamChaos" in line:
+                    line = line.split("Champion(")[1].split(")")[0]
+                    TeamChaos.append(line)
 
-    def _tail(self, file):
-        file.seek(0, 2)
-        while True:
-            line = file.readline()
-            if line.strip():
-                yield line
-            sleep(0.1)
+                elif "Connection Established" in line:
+                    break
+
+            if len(TeamOrder) == 8:
+                return
+
+            if TeamOrderIsAllies:
+                self.app.allies, self.app.enemies = TeamOrder, TeamChaos
+            else:
+                self.app.allies, self.app.enemies = TeamChaos, TeamOrder
+
+            for line in tail(game_file):
+                if "GAMESTATE_PREGAME to GAMESTATE_SPAWN" in line:
+                    self.app.times = [datetime.now()]
+                    globals.in_game = True
+                    break
+
+            for line in tail(game_file):
+                if "GAMESTATE_PRE_EXIT to GAMESTATE_EXIT" in line:
+                    globals.in_game = False
+                    self.app.shelve_times()
+                    break
+
+            game_file.close()

@@ -1,0 +1,6 @@
+[GAMES]
+game 0 = toots00|xcxcxc|0:45, 0:51, 0:55
+game 1 = |Katarina|0:52, 0:53, 0:54, 0:54, 0:55, 0:56, 0:56
+game 2 = Sett, LeeSin, Katarina, Jinx, Pyke|Singed, Elise, Zed, Aphelios, Zyra|
+game 3 = Illaoi, Ekko, Lissandra, Jhin, Lux|Aatrox, Nocturne, Katarina, Ezreal, Blitzcrank|19:12
+
