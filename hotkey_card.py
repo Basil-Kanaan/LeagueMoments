@@ -38,6 +38,7 @@ class HotkeyCard(Frame):
         self.hotkey_string = ""
         label = self.action["text"][:-1]
         self.app.update_config("HOTKEYS", label, self.hotkey_string, "config.txt")
+        self.app.update_dialogue("Hotkey deleted.")
 
     def set_hotkey(self):
         self.hotkey_label.config(text="Press Combination...")
@@ -52,3 +53,5 @@ class HotkeyCard(Frame):
 
         label = self.action["text"][:-1]
         self.app.update_config("HOTKEYS", label, self.hotkey_string, "config.txt")
+
+        self.app.update_dialogue("Hotkey has been set.")
