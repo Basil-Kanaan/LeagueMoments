@@ -43,6 +43,15 @@ class App:
             open("config.txt", "x").close()
         self.config.read("config.txt")
 
+        if "GAMES" not in self.games_config:
+            self.games_config["GAMES"] = {}
+
+        if "HOTKEYS" not in self.config:
+            self.config["HOTKEYS"] = {}
+
+        if "GENERAL" not in self.config:
+            self.config["GENERAL"] = {}
+
         self.league_directory = self.config["GENERAL"]["league_path"]
 
         self._init_sidebar(master)
@@ -57,14 +66,14 @@ class App:
             canvas_width = event.width
             canvas.itemconfig(canvas_window, width=canvas_width)
 
-        canvas = Canvas(parent, borderwidth=1, background="#ffffff")
+        canvas = Canvas(parent, relief="sunken", background="gray90")
         frame = Frame(canvas, background="#ffffff")
         scrollbar = Scrollbar(parent, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
-        canvas_window = canvas.create_window((4, 4), width=canvas.winfo_x(), window=frame, anchor="nw")
+        canvas_window = canvas.create_window(0, 0, width=canvas.winfo_x(), window=frame, anchor="nw")
 
         frame.bind("<Configure>", lambda event, canvas=canvas: onFrameConfigure(canvas))
         canvas.bind('<Configure>', lambda event, canvas=canvas, canvas_window=canvas_window: FrameWidth(event, canvas, canvas_window))
@@ -82,16 +91,17 @@ class App:
         sidebar = self.sidebar
         sidebar.pack(fill=tk.BOTH, side=tk.RIGHT)
 
-        timestamp = Button(sidebar, text="Hotkeys...", bg="#e3aaaa")
+        timestamp = Button(sidebar, text="Hotkeys...")
         directory = Button(sidebar, text="League Directory...", bg="gray80")
-        # delete = Button(sidebar, text="Delete File", bg="#e3aaaa")
+        delete = Button(sidebar, text="Delete All Games", bg="#e3aaaa")
 
         timestamp.pack(side="top", fill="x", padx=10, pady=(5, 0))
         directory.pack(side="top", fill="x", padx=10, pady=(5, 0))
-        # delete.pack(side="top", fill="x", padx=10, pady=(5, 0))
+        delete.pack(side="top", fill="x", padx=10, pady=(5, 0))
 
         timestamp.config(command=self.hotkey_panel)
         directory.config(command=self.set_league_path)
+        delete.config(command=self.delete_games)
 
         self.league_path_view = Entry(sidebar)
         self.league_path_view.pack(side="top", fill="x", padx=10, pady=5)
@@ -189,6 +199,10 @@ class App:
         self.dialogue.delete("0.0", "end")
         self.dialogue.insert("0.0", msg)
         self.dialogue.config(state="disabled")
+
+    def delete_games(self):
+        with open("games.txt", "w") as file:
+            file.write("[GAMES]")
 
     def add_gamecard(self, frame, allies, enemies, times):
         GameCard(frame, self, allies, enemies, times)
